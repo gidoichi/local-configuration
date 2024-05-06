@@ -1,0 +1,218 @@
+- hosts: localhost
+
+  tasks:
+    - become: true
+      become_user: '{{ ansible_env.SUDO_USER }}'
+      block:
+        - name: 'Register HOME variable'
+          shell: printf '%s' "${HOME}"
+          check_mode: false
+          changed_when: false
+          register: HOME
+        - name: 'Register In WSL'
+          command: which wslpath
+          check_mode: false
+          changed_when: false
+          ignore_errors: true
+          register: wsl
+
+        - name: 'Add apt repositories'
+          apt_repository:
+            repo: '{{ item }}'
+          loop:
+            - ppa:longsleep/golang-backports
+            - ppa:kelleyk/emacs
+
+        - name: 'Install latest packages'
+          package:
+            name: '{{ item }}'
+            state: latest
+          loop:
+            - apt-file
+            - cmake
+            - direnv
+            - emacs28-nox
+            - fzf
+            - fd-find # for Doom Emacs
+            - git
+            - golang
+            - jq
+            - libtool-bin # for Doom Emacs
+            - make
+            - moreutils # for using `vipe`
+            - npm
+            - ripgrep # for Doom Emacs
+            - silversearcher-ag # for Doom Emacs
+            - texinfo # for makeinfo for emacs/magit
+            - trash-cli
+            - python3
+            - python3-pip
+            - shellcheck # for Doom Emacs
+            - zsh
+
+        - name: 'Change default shell'
+          user:
+            name: '{{ ansible_env.SUDO_USER }}'
+            shell: /bin/zsh
+
+        - name: 'go install'
+          command:
+            argv: [go, install, '{{ item }}']
+          register: result
+          changed_when: result.stdout | length > 0
+          loop:
+            - github.com/x-motemen/ghq@latest
+            - golang.org/x/tools/gopls@latest # for Doom Emacs
+            - github.com/fatih/gomodifytags@latest # for Doom Emacs
+            - github.com/x-motemen/gore/cmd/gore@latest # for Doom Emacs
+            - golang.org/x/tools/cmd/guru@latest # for Doom Emacs
+            - github.com/gidoichi/yaml-path@latest # for Doom Emacs
+
+        - name: 'Register GHQ_ROOT variable'
+          command:
+            argv: [ghq, root]
+          register: GHQ_ROOT
+          check_mode: false
+          changed_when: false
+          environment:
+            PATH: "{{ (ansible_env.GOPATH | default(HOME.stdout + '/go')) + '/bin' }}:{{ ansible_env.PATH }}"
+
+        - name: 'ghq get'
+          command:
+            argv: [ghq, get, '{{ item }}']
+          loop:
+            - https://github.com/Homebrew/brew.git
+            - https://github.com/doomemacs/doomemacs.git
+            - https://github.com/sorin-ionescu/prezto.git
+            - git@github.com:gidoichi/conffiles.git
+            - git@github.com:gidoichi/dotfiles.git
+            - git@github.com:gidoichi/pmo.git
+          environment:
+            PATH: "{{ (ansible_env.GOPATH | default(HOME.stdout + '/go')) + '/bin' }}:{{ ansible_env.PATH }}"
+          register: result
+          changed_when: result.stderr is not search("exists")
+
+        - name: 'Place dotfiles'
+          block:
+            - name: 'Place dotfiles: ln -s dotfiles'
+              file:
+                state: link
+                src: '{{ GHQ_ROOT.stdout }}/github.com/gidoichi/dotfiles'
+                path: '{{ HOME.stdout }}/.dotfiles'
+            - name: 'Place dotfiles: run install.sh'
+              command:
+                argv: ['{{ HOME.stdout }}/.dotfiles/install.sh']
+              register: result
+              changed_when: result.stderr | length > 0
+
+        - name: 'Configure prezto'
+          block:
+            - name: 'Configure prezto: ln -s prezto'
+              file:
+                state: link
+                src: '{{ GHQ_ROOT.stdout }}/github.com/sorin-ionescu/prezto'
+                path: '{{ HOME.stdout }}/.zprezto'
+            - name: 'Configure prezto: install module'
+              git:
+                repo: '{{ item }}'
+                dest: '{{ HOME.stdout }}/.zprezto/contrib/{{ item | regex_replace("^.*/") }}'
+              loop:
+                - https://github.com/Aloxaf/fzf-tab
+            - name: 'Configure prezto: linking the configuration files'
+              command:
+                argv:
+                - /bin/zsh
+                - -c
+                - |
+                  setopt EXTENDED_GLOB
+                  for rcfile in "${HOME}"/.zprezto/runcoms/^README.md(.N); do
+                    [ -e "${HOME}/.${rcfile:t}" ] && continue
+                    (set -x; ln -s "$rcfile" "${HOME}/.${rcfile:t}")
+                  done
+              register: result
+              changed_when: result.stderr | length > 0
+
+        - name: 'Check whether using Directories in Japanese'
+          stat:
+            path: '{{ HOME.stdout }}/ダウンロード'
+          register: jpdir
+          changed_when: false
+        - name: 'Use English directories'
+          when: jpdir.stat.exists
+          block:
+            - name: 'Install "xdg-user-dirs-gtk"'
+              package:
+                name: 'xdg-user-dirs-gtk'
+                state: latest
+            - name: 'Change Directory Names from Japanese to English'
+              shell: LANG=C xdg-user-dirs-gtk-update
+
+        - name: 'Put Links to Windows Directories in "HOME" (need --extra-vars "windows_home=<dir>")'
+          file:
+            src: '{{ windows_home }}/{{ item }}'
+            dest: '{{ HOME.stdout }}/{{ item }}'
+            owner: '{{ ansible_env.SUDO_USER }}'
+            group: '{{ ansible_env.SUDO_USER }}'
+            state: link
+          loop:
+            - 'Desktop'
+            - 'Documents'
+            - 'Downloads'
+            - 'Music'
+            - 'Pictures'
+            - 'Videos'
+            - 'Dropbox'
+          when: windows_home is defined
+
+        - name: 'npm install'
+          shell: |
+            if npm ls -g --json | jq -e --arg e '{{ item }}' '.dependencies[$e]' >/dev/null; then
+              return
+            fi
+            npm install -g '{{ item }}'
+          register: result
+          changed_when: result.stdout | length > 0
+          loop:
+            - eslint
+            - marked
+            - prettier
+            - textlint
+            - textlint-rule-preset-ja-spacing
+            - textlint-rule-preset-ja-technical-writing
+            - textlint-rule-preset-jtf-style
+        - name: 'npm install (at wsl)'
+          shell: |
+            if npm ls -g --json | jq -e --arg e '{{ item }}' '.dependencies[$e]' >/dev/null; then
+              return
+            fi
+            npm install -g '{{ item }}'
+          register: result
+          changed_when: result.stdout | length > 0
+          loop:
+            - wsl-open
+          when: wsl.rc == 0
+
+        - name: 'brew install'
+          command:
+            argv: ['{{ GHQ_ROOT.stdout }}/github.com/Homebrew/brew/bin/brew', install, '{{ item }}']
+          register: result
+          changed_when: result.stderr is not search(" is already installed and up-to-date.")
+          loop:
+            - asdf
+            - deno
+            - yq
+
+        - name: 'Configure Doom Emacs'
+          block:
+            - name: 'Configure Doom Emacs: ln -s doomemacs'
+              file:
+                state: link
+                src: '{{ GHQ_ROOT.stdout }}/github.com/doomemacs/doomemacs'
+                path: '{{ HOME.stdout }}/.emacs.d'
+            - name: 'Configure Doom Emacs: install'
+              expect:
+                command: '{{ HOME.stdout }}/.emacs.d/bin/doom install'
+                responses:
+                  'Generate an envvar file?': 'y'
+                  "Download and install all-the-icon's fonts?": 'y'
+                timeout: 1200
