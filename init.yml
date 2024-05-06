@@ -17,6 +17,7 @@
           register: wsl
 
         - name: 'Add apt repositories'
+          become_user: root
           apt_repository:
             repo: '{{ item }}'
           loop:
@@ -24,6 +25,7 @@
             - ppa:kelleyk/emacs
 
         - name: 'Install latest packages'
+          become_user: root
           package:
             name: '{{ item }}'
             state: latest
@@ -51,9 +53,16 @@
             - zsh
 
         - name: 'Change default shell'
+          become_user: root
           user:
             name: '{{ ansible_env.SUDO_USER }}'
             shell: /bin/zsh
+
+        - name: 'pip install'
+          pip:
+            name: '{{ item }}'
+          loop:
+            - pexpect # used later `expect`
 
         - name: 'go install'
           command:
@@ -155,13 +164,14 @@
             group: '{{ ansible_env.SUDO_USER }}'
             state: link
           loop:
-            - 'Desktop'
-            - 'Documents'
-            - 'Downloads'
-            - 'Music'
-            - 'Pictures'
-            - 'Videos'
-            - 'Dropbox'
+            - Desktop
+            - Documents
+            - Downloads
+            - Music
+            - Pictures
+            - Videos
+            - Dropbox
+          ignore_errors: true
           when: windows_home is defined
 
         - name: 'npm install'
