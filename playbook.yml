@@ -17,22 +17,12 @@
         - python3
         - python3-pip
 
-    - name: 'Register In-WSL'
-      ansible.builtin.command: which wslpath
-      check_mode: false
-      changed_when: false
-      ignore_errors: true
-      register: wsl
-    - name: 'Print whether In-WSL'
-      ansible.builtin.debug:
-        msg: '{{ wsl.rc == 0 }}'
-
     - name: 'Register windows_home variable'
       ansible.builtin.shell: wslpath "$(/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command Write-Host '$Home')" # wslpath "$(powershell.exe -Command Write-Host '$Home')"
       check_mode: false
       changed_when: false
       register: windows_home
-      when: wsl.rc == 0
+      when: ansible_env.WSL_DISTRO_NAME is defined
     - name: 'Print windows_home variable'
       ansible.builtin.debug:
         msg: '{{ windows_home.stdout }}'
