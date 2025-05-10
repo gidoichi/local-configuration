@@ -1,37 +1,15 @@
 - hosts: localhost
-
   tasks:
     - become: true
-      become_user: '{{ ansible_env.SUDO_USER }}'
       block:
-        - name: 'Register HOME variable'
-          shell: printf '%s' "${HOME}"
-          check_mode: false
-          changed_when: false
-          register: HOME
-        - name: 'Register In WSL'
-          command: which wslpath
-          check_mode: false
-          changed_when: false
-          ignore_errors: true
-          register: wsl
-
-        - name: 'Add apt repositories'
-          apt_repository:
-            repo: '{{ item }}'
-          loop:
-            - ppa:longsleep/golang-backports
-            - ppa:kelleyk/emacs
-
         - name: 'Install latest packages'
-          package:
+          ansible.builtin.package:
             name: '{{ item }}'
             state: latest
           loop:
             - apt-file
             - cmake
-            - direnv
-            - emacs28-nox
+            - emacs-nox # - emacs28-nox
             - fzf
             - fd-find # for Doom Emacs
             - git
@@ -47,79 +25,95 @@
             - trash-cli
             - python3
             - python3-pip
+            - python3-pexpect # for ansible.builtin.expect
             - shellcheck # for Doom Emacs
             - zsh
 
+- hosts: localhost
+  tasks:
+    - block:
+        - name: 'Register In-WSL'
+          ansible.builtin.command: which wslpath
+          check_mode: false
+          changed_when: false
+          ignore_errors: true
+          register: wsl
+        - name: 'Print whether In-WSL'
+          ansible.builtin.debug:
+            msg: '{{ wsl.rc == 0 }}'
+
+        - name: 'Register windows_home variable'
+          ansible.builtin.shell: wslpath "$(/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command Write-Host '$Home')" # wslpath "$(powershell.exe -Command Write-Host '$Home')"
+          check_mode: false
+          changed_when: false
+          register: windows_home
+          when: wsl.rc == 0
+        - name: 'Print windows_home variable'
+          ansible.builtin.debug:
+            msg: '{{ windows_home.stdout }}'
+
         - name: 'Change default shell'
-          user:
-            name: '{{ ansible_env.SUDO_USER }}'
+          ansible.builtin.user:
+            name: '{{ ansible_env.USER }}'
             shell: /bin/zsh
 
         - name: 'go install'
-          command:
+          ansible.builtin.command:
             argv: [go, install, '{{ item }}']
           register: result
-          changed_when: result.stdout | length > 0
+          # changed_when: result.stdout | length > 0
           loop:
             - github.com/x-motemen/ghq@latest
             - golang.org/x/tools/gopls@latest # for Doom Emacs
             - github.com/fatih/gomodifytags@latest # for Doom Emacs
             - github.com/x-motemen/gore/cmd/gore@latest # for Doom Emacs
             - golang.org/x/tools/cmd/guru@latest # for Doom Emacs
-            - github.com/gidoichi/yaml-path@latest # for Doom Emacs
 
         - name: 'Register GHQ_ROOT variable'
-          command:
+          ansible.builtin.command:
             argv: [ghq, root]
           register: GHQ_ROOT
           check_mode: false
           changed_when: false
           environment:
-            PATH: "{{ (ansible_env.GOPATH | default(HOME.stdout + '/go')) + '/bin' }}:{{ ansible_env.PATH }}"
+            PATH: "{{ (ansible_env.GOPATH | default(ansible_env.HOME + '/go')) + '/bin' }}:{{ ansible_env.PATH }}"
 
         - name: 'ghq get'
-          command:
+          ansible.builtin.command:
             argv: [ghq, get, '{{ item }}']
           loop:
             - https://github.com/Homebrew/brew.git
-            - https://github.com/doomemacs/doomemacs.git
-            - https://github.com/sorin-ionescu/prezto.git
             - git@github.com:gidoichi/conffiles.git
             - git@github.com:gidoichi/dotfiles.git
-            - git@github.com:gidoichi/pmo.git
+            # - git@github.com:gidoichi/pmo.git
           environment:
-            PATH: "{{ (ansible_env.GOPATH | default(HOME.stdout + '/go')) + '/bin' }}:{{ ansible_env.PATH }}"
+            PATH: "{{ (ansible_env.GOPATH | default(ansible_env.HOME + '/go')) + '/bin' }}:{{ ansible_env.PATH }}"
           register: result
           changed_when: result.stderr is not search("exists")
 
         - name: 'Place dotfiles'
           block:
             - name: 'Place dotfiles: ln -s dotfiles'
-              file:
+              ansible.builtin.file:
                 state: link
                 src: '{{ GHQ_ROOT.stdout }}/github.com/gidoichi/dotfiles'
-                path: '{{ HOME.stdout }}/.dotfiles'
+                path: '{{ ansible_env.HOME }}/.dotfiles'
             - name: 'Place dotfiles: run install.sh'
-              command:
-                argv: ['{{ HOME.stdout }}/.dotfiles/install.sh']
+              ansible.builtin.command:
+                argv: ['{{ ansible_env.HOME }}/.dotfiles/install.sh']
               register: result
               changed_when: result.stderr | length > 0
 
         - name: 'Configure prezto'
           block:
-            - name: 'Configure prezto: ln -s prezto'
-              file:
-                state: link
-                src: '{{ GHQ_ROOT.stdout }}/github.com/sorin-ionescu/prezto'
-                path: '{{ HOME.stdout }}/.zprezto'
             - name: 'Configure prezto: install module'
-              git:
+              ansible.builtin.git:
                 repo: '{{ item }}'
-                dest: '{{ HOME.stdout }}/.zprezto/contrib/{{ item | regex_replace("^.*/") }}'
+                dest: '{{ ansible_env.HOME }}/.zprezto/contrib/{{ item | regex_replace("^.*/") }}'
               loop:
                 - https://github.com/Aloxaf/fzf-tab
             - name: 'Configure prezto: linking the configuration files'
-              command:
+              ansible.builtin.command:
                 argv:
                 - /bin/zsh
                 - -c
@@ -132,27 +126,10 @@
               register: result
               changed_when: result.stderr | length > 0
 
-        - name: 'Check whether using Directories in Japanese'
-          stat:
-            path: '{{ HOME.stdout }}/ダウンロード'
-          register: jpdir
-          changed_when: false
-        - name: 'Use English directories'
-          when: jpdir.stat.exists
-          block:
-            - name: 'Install "xdg-user-dirs-gtk"'
-              package:
-                name: 'xdg-user-dirs-gtk'
-                state: latest
-            - name: 'Change Directory Names from Japanese to English'
-              shell: LANG=C xdg-user-dirs-gtk-update
-
-        - name: 'Put Links to Windows Directories in "HOME" (need --extra-vars "windows_home=<dir>")'
-          file:
-            src: '{{ windows_home }}/{{ item }}'
-            dest: '{{ HOME.stdout }}/{{ item }}'
-            owner: '{{ ansible_env.SUDO_USER }}'
-            group: '{{ ansible_env.SUDO_USER }}'
+        - name: 'Put Links to Windows Directories in "HOME"'
+          ansible.builtin.file:
+            src: '{{ windows_home.stdout }}/{{ item }}'
+            dest: '{{ ansible_env.HOME }}/{{ item }}'
             state: link
           loop:
             - 'Desktop'
@@ -161,15 +138,15 @@
             - 'Music'
             - 'Pictures'
             - 'Videos'
-            - 'Dropbox'
           when: windows_home is defined
 
         - name: 'npm install'
-          shell: |
+          ansible.builtin.shell: |
             if npm ls -g --json | jq -e --arg e '{{ item }}' '.dependencies[$e]' >/dev/null; then
               return
             fi
             npm install -g '{{ item }}'
+            echo DONE
           register: result
           changed_when: result.stdout | length > 0
           loop:
@@ -180,39 +157,45 @@
             - textlint-rule-preset-ja-spacing
             - textlint-rule-preset-ja-technical-writing
             - textlint-rule-preset-jtf-style
-        - name: 'npm install (at wsl)'
-          shell: |
-            if npm ls -g --json | jq -e --arg e '{{ item }}' '.dependencies[$e]' >/dev/null; then
-              return
-            fi
-            npm install -g '{{ item }}'
-          register: result
-          changed_when: result.stdout | length > 0
-          loop:
-            - wsl-open
-          when: wsl.rc == 0
 
         - name: 'brew install'
-          command:
+          ansible.builtin.command:
             argv: ['{{ GHQ_ROOT.stdout }}/github.com/Homebrew/brew/bin/brew', install, '{{ item }}']
           register: result
           changed_when: result.stderr is not search(" is already installed and up-to-date.")
           loop:
             - asdf
-            - deno
+            # - deno
             - yq
 
         - name: 'Configure Doom Emacs'
-          block:
-            - name: 'Configure Doom Emacs: ln -s doomemacs'
-              file:
-                state: link
-                src: '{{ GHQ_ROOT.stdout }}/github.com/doomemacs/doomemacs'
-                path: '{{ HOME.stdout }}/.emacs.d'
-            - name: 'Configure Doom Emacs: install'
-              expect:
-                command: '{{ HOME.stdout }}/.emacs.d/bin/doom install'
-                responses:
-                  'Generate an envvar file?': 'y'
-                  "Download and install all-the-icon's fonts?": 'y'
-                timeout: 1200
+          ansible.builtin.expect:
+            command: '{{ ansible_env.HOME }}/.emacs.d/bin/doom install'
+            responses:
+              'Generate an envvar file?': 'y'
+              "Download and install all-the-icon's fonts?": 'y'
+            timeout: 1200
+        - name: 'Install cargo'
+          # TODO PATH
+          ansible.builtin.shell: |
+            if which cargo >/dev/null; then
+              exit
+            fi
+
+            curl https://sh.rustup.rs -sSf | sh -s -- -y
+            echo DONE
+        - name: 'Install community.general'
+          ansible.builtin.shell: |
+            if ansible-galaxy collection list --format=json | jq -e '.. | ."{{ item }}"? | select(. != null)' >/dev/null; then
+              exit
+            fi
+
+            ansible-galaxy collection install "{{ item }}"
+            echo DONE
+          register: result
+          changed_when: result.stdout | length > 0
+          loop:
+            - community.general
+        - name: Install Rust packages
+          community.general.cargo:
+            name: git-credential-keepassxc
