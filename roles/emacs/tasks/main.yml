@@ -1,0 +1,39 @@
+---
+- name: 'Install packages'
+  become: true
+  ansible.builtin.package:
+    name: '{{ item }}'
+    state: latest
+  loop:
+    - emacs-nox
+    - fd-find
+    - libtool-bin
+    - ripgrep
+    - silversearcher-ag
+    - texinfo # for magit
+    - shellcheck
+
+- name: 'go install'
+  ansible.builtin.shell: |
+    command=$(echo "{{ item }}" | sed 's#.*/\(.*\)@.*#\1#')
+    if which $command >/dev/null; then
+      exit
+    fi
+
+    go install {{ item }}
+    echo DONE
+  register: result
+  changed_when: result.stdout | length > 0
+  loop:
+    - golang.org/x/tools/gopls@latest
+    - github.com/fatih/gomodifytags@latest
+    - github.com/x-motemen/gore/cmd/gore@latest
+    - golang.org/x/tools/cmd/guru@latest
+
+- name: 'Configure Doom Emacs'
+  ansible.builtin.shell: |
+    "{{ ansible_env.HOME }}/.emacs.d/bin/doom" install --no-config --no-hooks --env --fonts
+  register: result
+  changed_when: >-
+    result.stdout is not contains('Envvar file already exists, skipping') or
+    result.stdout is not contains('No packages need attention')

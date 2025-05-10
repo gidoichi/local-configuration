@@ -9,24 +9,16 @@
           loop:
             - apt-file
             - cmake
-            - emacs-nox # - emacs28-nox
             - fzf
-            - fd-find # for Doom Emacs
             - git
-            - golang
             - jq
-            - libtool-bin # for Doom Emacs
             - make
             - moreutils # for using `vipe`
             - npm
-            - ripgrep # for Doom Emacs
-            - silversearcher-ag # for Doom Emacs
-            - texinfo # for makeinfo for emacs/magit
             - trash-cli
             - python3
             - python3-pip
             - python3-pexpect # for ansible.builtin.expect
-            - shellcheck # for Doom Emacs
             - zsh
 
 - hosts: localhost
@@ -70,10 +62,6 @@
           changed_when: result.stdout | length > 0
           loop:
             - github.com/x-motemen/ghq@latest
-            - golang.org/x/tools/gopls@latest # for Doom Emacs
-            - github.com/fatih/gomodifytags@latest # for Doom Emacs
-            - github.com/x-motemen/gore/cmd/gore@latest # for Doom Emacs
-            - golang.org/x/tools/cmd/guru@latest # for Doom Emacs
 
         - name: 'Register GHQ_ROOT variable'
           ansible.builtin.command:
@@ -174,13 +162,6 @@
             # - deno
             - yq
 
-        - name: 'Configure Doom Emacs'
-          ansible.builtin.shell: |
-            "{{ ansible_env.HOME }}/.emacs.d/bin/doom" install --no-config --no-hooks --env --fonts
-          register: result
-          changed_when: >-
-            result.stdout is not contains('Envvar file already exists, skipping') or
-            result.stdout is not contains('No packages need attention')
         - name: 'Install cargo'
           # TODO PATH
           ansible.builtin.shell: |
@@ -207,3 +188,7 @@
         - name: Install Rust packages
           community.general.cargo:
             name: git-credential-keepassxc
+
+- hosts: localhost
+  roles:
+    - role: emacs
