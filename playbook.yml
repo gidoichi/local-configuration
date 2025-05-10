@@ -12,7 +12,6 @@
         - git
         - jq
         - make
-        - moreutils # for using `vipe`
         - npm
         - trash-cli
         - python3
