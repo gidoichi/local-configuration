@@ -17,7 +17,6 @@
         - trash-cli
         - python3
         - python3-pip
-        - zsh
 
     - name: 'Register In-WSL'
       ansible.builtin.command: which wslpath
@@ -38,11 +37,6 @@
     - name: 'Print windows_home variable'
       ansible.builtin.debug:
         msg: '{{ windows_home.stdout }}'
-
-    - name: 'Change default shell'
-      ansible.builtin.user:
-        name: '{{ ansible_env.USER }}'
-        shell: /bin/zsh
 
     - name: 'go install'
       ansible.builtin.shell: |
@@ -90,28 +84,6 @@
         - name: 'Place dotfiles: run install.sh'
           ansible.builtin.command:
             argv: ['{{ ansible_env.HOME }}/.dotfiles/install.sh']
-          register: result
-          changed_when: result.stderr | length > 0
-
-    - name: 'Configure prezto'
-      block:
-        - name: 'Configure prezto: install module'
-          ansible.builtin.git:
-            repo: '{{ item }}'
-            dest: '{{ ansible_env.HOME }}/.zprezto/contrib/{{ item | regex_replace("^.*/") }}'
-          loop:
-            - https://github.com/Aloxaf/fzf-tab
-        - name: 'Configure prezto: linking the configuration files'
-          ansible.builtin.command:
-            argv:
-            - /bin/zsh
-            - -c
-            - |
-              setopt EXTENDED_GLOB
-              for rcfile in "${HOME}"/.zprezto/runcoms/^README.md(.N); do
-                [ -e "${HOME}/.${rcfile:t}" ] && continue
-                (set -x; ln -s "$rcfile" "${HOME}/.${rcfile:t}")
-              done
           register: result
           changed_when: result.stderr | length > 0
 
@@ -186,4 +158,5 @@
 
 - hosts: localhost
   roles:
-    - role: emacs
+    - emacs
+    - zsh
