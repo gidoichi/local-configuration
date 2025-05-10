@@ -58,10 +58,16 @@
             shell: /bin/zsh
 
         - name: 'go install'
-          ansible.builtin.command:
-            argv: [go, install, '{{ item }}']
+          ansible.builtin.shell: |
+            command=$(echo "{{ item }}" | sed 's#.*/\(.*\)@.*#\1#')
+            if which $command >/dev/null; then
+              exit
+            fi
+
+            go install {{ item }}
+            echo DONE
           register: result
-          # changed_when: result.stdout | length > 0
+          changed_when: result.stdout | length > 0
           loop:
             - github.com/x-motemen/ghq@latest
             - golang.org/x/tools/gopls@latest # for Doom Emacs
@@ -169,12 +175,12 @@
             - yq
 
         - name: 'Configure Doom Emacs'
-          ansible.builtin.expect:
-            command: '{{ ansible_env.HOME }}/.emacs.d/bin/doom install'
-            responses:
-              'Generate an envvar file?': 'y'
-              "Download and install all-the-icon's fonts?": 'y'
-            timeout: 1200
+          ansible.builtin.shell: |
+            "{{ ansible_env.HOME }}/.emacs.d/bin/doom" install --no-config --no-hooks --env --fonts
+          register: result
+          changed_when: >-
+            result.stdout is not contains('Envvar file already exists, skipping') or
+            result.stdout is not contains('No packages need attention')
         - name: 'Install cargo'
           # TODO PATH
           ansible.builtin.shell: |
@@ -184,6 +190,8 @@
 
             curl https://sh.rustup.rs -sSf | sh -s -- -y
             echo DONE
+          register: result
+          changed_when: result.stdout | length > 0
         - name: 'Install community.general'
           ansible.builtin.shell: |
             if ansible-galaxy collection list --format=json | jq -e '.. | ."{{ item }}"? | select(. != null)' >/dev/null; then
