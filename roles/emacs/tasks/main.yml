@@ -6,30 +6,11 @@
     state: latest
   loop:
     - emacs-nox
-    - fd-find
-    - ripgrep
-    - shellcheck
     # https://github.com/gidoichi/dotfiles/blob/68c7860161c7bfbc7b5e7e6e48be48dc22c23d5b/.doom.d/packages.el#L82
     - cmake
     - libtool-bin
     # https://github.com/gidoichi/dotfiles/blob/68c7860161c7bfbc7b5e7e6e48be48dc22c23d5b/.doom.d/inits/10_global-settings.el#L122
     - silversearcher-ag
-
-- name: 'go install'
-  ansible.builtin.shell: |
-    command=$(echo "{{ item }}" | sed 's#.*/\(.*\)@.*#\1#')
-    if which $command >/dev/null; then
-      exit
-    fi
-    go install {{ item }}
-    echo DONE
-  register: result
-  changed_when: result.stdout | length > 0
-  loop:
-    - golang.org/x/tools/gopls@latest
-    - github.com/fatih/gomodifytags@latest
-    - github.com/x-motemen/gore/cmd/gore@latest
-    - golang.org/x/tools/cmd/guru@latest
 
 - name: 'npm install'
   become: true
