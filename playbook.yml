@@ -39,7 +39,7 @@
       loop:
         - https://github.com/Homebrew/brew.git
         - git@github.com:gidoichi/conffiles.git
-        # - git@github.com:gidoichi/pmo.git
+        - git@github.com:gidoichi/pmo.git
       environment:
         PATH: "{{ (ansible_env.GOPATH | default(ansible_env.HOME + '/go')) + '/bin' }}:{{ ansible_env.PATH }}"
       register: result
