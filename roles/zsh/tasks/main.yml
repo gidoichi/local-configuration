@@ -5,6 +5,7 @@
     name: '{{ item }}'
     state: latest
   loop:
+    - fzf
     - zsh
 
 - name: 'Change default shell'

@@ -2,6 +2,8 @@
   roles:
     - role: ghq
       tags: ghq
+    - role: npm
+      tags: npm
 
 - hosts: localhost
   tasks:
@@ -33,18 +35,6 @@
         msg: '{{ windows_home.stdout }}'
       tags: always
 
-    - name: 'ghq get'
-      ansible.builtin.command:
-        argv: [ghq, get, '{{ item }}']
-      loop:
-        - https://github.com/Homebrew/brew.git
-        - git@github.com:gidoichi/conffiles.git
-        - git@github.com:gidoichi/pmo.git
-      environment:
-        PATH: "{{ (ansible_env.GOPATH | default(ansible_env.HOME + '/go')) + '/bin' }}:{{ ansible_env.PATH }}"
-      register: result
-      changed_when: result.stderr is not search("exists")
-
     - name: 'Put Links to Windows Directories in "HOME"'
       ansible.builtin.file:
         src: '{{ windows_home.stdout }}/{{ item }}'
@@ -58,6 +48,18 @@
         - 'Pictures'
         - 'Videos'
       when: windows_home is defined
+
+    - name: 'ghq get'
+      ansible.builtin.command:
+        argv: [ghq, get, '{{ item }}']
+      changed_when: result.stderr is not search("exists")
+      environment:
+        PATH: "{{ (ansible_env.GOPATH | default(ansible_env.HOME + '/go')) + '/bin' }}:{{ ansible_env.PATH }}"
+      loop:
+        - https://github.com/Homebrew/brew.git
+        - git@github.com:gidoichi/conffiles.git
+        - git@github.com:gidoichi/pmo.git
+      register: result
 
     - name: 'npm install'
       ansible.builtin.shell: |
@@ -85,6 +87,8 @@
 
 - hosts: localhost
   roles:
+    - role: dotfiles
+      tags: dotfiles
     - role: emacs
       tags: emacs
     - role: git-credential-keepassxc
