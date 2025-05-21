@@ -39,25 +39,11 @@
       loop:
         - https://github.com/Homebrew/brew.git
         - git@github.com:gidoichi/conffiles.git
-        - git@github.com:gidoichi/dotfiles.git
         # - git@github.com:gidoichi/pmo.git
       environment:
         PATH: "{{ (ansible_env.GOPATH | default(ansible_env.HOME + '/go')) + '/bin' }}:{{ ansible_env.PATH }}"
       register: result
       changed_when: result.stderr is not search("exists")
-
-    - name: 'Place dotfiles'
-      block:
-        - name: 'Place dotfiles: ln -s dotfiles'
-          ansible.builtin.file:
-            state: link
-            src: '{{ GHQ_ROOT.stdout }}/github.com/gidoichi/dotfiles'
-            path: '{{ ansible_env.HOME }}/.dotfiles'
-        - name: 'Place dotfiles: run install.sh'
-          ansible.builtin.command:
-            argv: ['{{ ansible_env.HOME }}/.dotfiles/install.sh']
-          register: result
-          changed_when: result.stderr | length > 0
 
     - name: 'Put Links to Windows Directories in "HOME"'
       ansible.builtin.file:
