@@ -14,14 +14,19 @@
         - trash-cli
 
     - name: 'Register windows_home variable'
-      ansible.builtin.shell: wslpath "$(powershell.exe -Command Write-Host '$Env:USERPROFILE')"
+      ansible.builtin.shell: |
+        set -eu
+        profile=$(powershell.exe -Command Write-Host '$Env:USERPROFILE')
+        wslpath "$profile"
       check_mode: false
       changed_when: false
       register: windows_home
+      tags: always
       when: ansible_env.WSL_DISTRO_NAME is defined
     - name: 'Print windows_home variable'
       ansible.builtin.debug:
         msg: '{{ windows_home.stdout }}'
+      tags: always
 
     - name: 'go install'
       ansible.builtin.shell: |
@@ -110,34 +115,14 @@
         # - deno
         - yq
 
-    - name: 'Install cargo'
-      # TODO PATH
-      ansible.builtin.shell: |
-        if which cargo >/dev/null; then
-          exit
-        fi
-
-        curl https://sh.rustup.rs -sSf | sh -s -- -y
-        echo DONE
-      register: result
-      changed_when: result.stdout | length > 0
-    - name: 'Install community.general'
-      ansible.builtin.shell: |
-        if ansible-galaxy collection list --format=json | jq -e '.. | ."{{ item }}"? | select(. != null)' >/dev/null; then
-          exit
-        fi
-
-        ansible-galaxy collection install "{{ item }}"
-        echo DONE
-      register: result
-      changed_when: result.stdout | length > 0
-      loop:
-        - community.general
-    - name: Install Rust packages
-      community.general.cargo:
-        name: git-credential-keepassxc
-
 - hosts: localhost
   roles:
-    - emacs
-    - zsh
+    - role: emacs
+      tags: emacs
+    - role: git-credential-keepassxc
+      tags: git-credential-keepassxc
+      vars:
+        version: v0.14.1
+      when: windows_home is defined
+    - role: zsh
+      tags: zsh
