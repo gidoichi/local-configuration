@@ -38,11 +38,12 @@
         state: latest
       loop:
         - apt-file
-        - fzf
         - git
         - jq
         - make
         - trash-cli
+        # https://github.com/gidoichi/dotfiles/blob/733225ff751cf4ae6fdbca8e6af9c7d661022e62/.shell/init.d/20-config.sh#L126
+        - fzf
 
     - name: 'Put Links to Windows Directories in "HOME"'
       ansible.builtin.file:
@@ -70,11 +71,19 @@
         - git@github.com:gidoichi/pmo.git
       register: result
 
-    - name: 'Install conffiles'
-      ansible.builtin.command:
-        argv: ['{{ GHQ_ROOT.stdout }}/github.com/gidoichi/conffiles/install.sh']
-      register: result
-      changed_when: result.stderr | length > 0
+    - block:
+      - name: 'Install packages'
+        become: true
+        ansible.builtin.package:
+          name: '{{ item }}'
+          state: latest
+        loop:
+          - yq
+      - name: 'Install conffiles'
+        ansible.builtin.command:
+          argv: ['{{ GHQ_ROOT.stdout }}/github.com/gidoichi/conffiles/install.sh']
+        register: result
+        changed_when: result.stderr | length > 0
 
     # - name: 'npm install'
     #   ansible.builtin.shell: |
@@ -90,15 +99,15 @@
     #     - marked
     #     - prettier
 
-    # - name: 'brew install'
-    #   ansible.builtin.command:
-    #     argv: ['{{ GHQ_ROOT.stdout }}/github.com/Homebrew/brew/bin/brew', install, '{{ item }}']
-    #   register: result
-    #   changed_when: result.stderr is not search(" is already installed and up-to-date.")
-    #   loop:
-    #     - asdf
-    #     # - deno
-    #     - yq
+    - name: 'brew install'
+      ansible.builtin.command:
+        argv: ['{{ GHQ_ROOT.stdout }}/github.com/Homebrew/brew/bin/brew', install, '{{ item }}']
+      register: result
+      changed_when: result.stderr is not search(" is already installed and up-to-date.")
+      loop:
+        # - deno
+        # https://github.com/gidoichi/dotfiles/blob/733225ff751cf4ae6fdbca8e6af9c7d661022e62/.shell/init.d/20-config.sh#L15
+        - asdf
 
 - hosts: localhost
   roles:
