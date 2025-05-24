@@ -70,6 +70,12 @@
         - git@github.com:gidoichi/pmo.git
       register: result
 
+    - name: 'Install conffiles'
+      ansible.builtin.command:
+        argv: ['{{ GHQ_ROOT.stdout }}/github.com/gidoichi/conffiles/install.sh']
+      register: result
+      changed_when: result.stderr | length > 0
+
     # - name: 'npm install'
     #   ansible.builtin.shell: |
     #     if npm ls -g --json | jq -e --arg e '{{ item }}' '.dependencies[$e]' >/dev/null; then
