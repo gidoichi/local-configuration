@@ -1,0 +1,35 @@
+---
+- name: 'Check key exists'
+  ansible.builtin.stat:
+    path: '{{ ansible_env.HOME }}/.ssh/id_ed25519'
+  register: sshkey
+
+- when: not sshkey.stat.exists
+  block:
+  - name: 'Install packages'
+    become: true
+    ansible.builtin.package:
+      name: '{{ item }}'
+      state: latest
+    loop:
+      - ansible
+
+  - name: 'Generate passphrase'
+    ansible.builtin.set_fact:
+      passphrase: "{{ lookup('community.general.random_string', length=20) }}"
+
+  - name: 'Print passphrase'
+    ansible.builtin.debug:
+      var: passphrase
+
+  - name: 'Create ssh directory'
+    ansible.builtin.file:
+      path: '{{ ansible_env.HOME }}/.ssh'
+      state: directory
+
+  - name: 'Generate an OpenSSH keypair'
+    community.crypto.openssh_keypair:
+      passphrase: '{{ passphrase }}'
+      path: '{{ ansible_env.HOME }}/.ssh/id_ed25519'
+      type: ed25519
+      regenerate: never

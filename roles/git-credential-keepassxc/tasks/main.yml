@@ -1,26 +1,40 @@
 ---
-- name: Create temporary directory
+- name: 'Install packages'
+  become: true
+  ansible.builtin.package:
+    name: '{{ item }}'
+    state: latest
+  loop:
+    - unzip
+
+- name: 'Create temporary directory'
   ansible.builtin.tempfile:
     state: directory
   check_mode: false
   changed_when: false
   register: tempfile
 
-- name: Download exe file
+- name: 'Download exe file'
   ansible.builtin.get_url:
     url: 'https://github.com/Frederick888/git-credential-keepassxc/releases/download/{{ version }}/windows-latest-minimal.zip'
     dest: '{{ tempfile.path }}/windows-latest-minimal.zip'
   check_mode: false
   changed_when: false
 
-- name: Unarchive the file
+- name: 'Create local bin directory'
+  ansible.builtin.file:
+    path: '{{ ansible_env.HOME }}/.local/bin'
+    recurse: true
+    state: directory
+
+- name: 'Unarchive the file'
   ansible.builtin.unarchive:
     src: '{{ tempfile.path }}/windows-latest-minimal.zip'
     dest: '{{ ansible_env.HOME }}/.local/bin/'
     mode: '0755'
     remote_src: true
 
-- name: Remove the temporary directory
+- name: 'Remove the temporary directory'
   ansible.builtin.file:
     path: "{{ tempfile.path }}"
     state: absent

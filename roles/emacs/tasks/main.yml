@@ -1,11 +1,18 @@
 ---
+- name: 'Install emacs'
+  become: true
+  ansible.builtin.apt:
+    # without postfix
+    install_recommends: false
+    name: emacs-nox
+    state: latest
+
 - name: 'Install packages'
   become: true
   ansible.builtin.package:
     name: '{{ item }}'
     state: latest
   loop:
-    - emacs-nox
     # https://github.com/gidoichi/dotfiles/blob/68c7860161c7bfbc7b5e7e6e48be48dc22c23d5b/.doom.d/packages.el#L82
     - cmake
     - libtool-bin
@@ -34,7 +41,7 @@
 
 - name: 'Configure Doom Emacs'
   ansible.builtin.shell: |
-    "{{ ansible_env.HOME }}/.emacs.d/bin/doom" install --no-config --no-hooks --env --fonts
+    "{{ ansible_env.HOME }}/.emacs.d/bin/doom" install --no-config --no-hooks --fonts --force
   register: result
   changed_when: >-
     result.stdout is not contains('Envvar file already exists, skipping') or

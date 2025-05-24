@@ -1,9 +1,33 @@
 - hosts: localhost
+  tasks:
+    - name: 'Register windows_home variable'
+      ansible.builtin.shell: |
+        set -eu
+        profile=$(powershell.exe -Command Write-Host '$Env:USERPROFILE')
+        wslpath "$profile"
+      check_mode: false
+      changed_when: false
+      register: windows_home
+      tags: always
+      when: ansible_env.WSL_DISTRO_NAME is defined
+    - name: 'Print windows_home variable'
+      ansible.builtin.debug:
+        msg: '{{ windows_home.stdout }}'
+      tags: always
+
+- hosts: localhost
   roles:
     - role: ghq
       tags: ghq
+    - role: git-credential-keepassxc
+      tags: git-credential-keepassxc
+      vars:
+        version: v0.14.1
+      when: windows_home is defined
     - role: npm
       tags: npm
+    - role: ssh
+      tags: ssh
 
 - hosts: localhost
   tasks:
@@ -19,21 +43,6 @@
         - jq
         - make
         - trash-cli
-
-    - name: 'Register windows_home variable'
-      ansible.builtin.shell: |
-        set -eu
-        profile=$(powershell.exe -Command Write-Host '$Env:USERPROFILE')
-        wslpath "$profile"
-      check_mode: false
-      changed_when: false
-      register: windows_home
-      tags: always
-      when: ansible_env.WSL_DISTRO_NAME is defined
-    - name: 'Print windows_home variable'
-      ansible.builtin.debug:
-        msg: '{{ windows_home.stdout }}'
-      tags: always
 
     - name: 'Put Links to Windows Directories in "HOME"'
       ansible.builtin.file:
@@ -61,29 +70,29 @@
         - git@github.com:gidoichi/pmo.git
       register: result
 
-    - name: 'npm install'
-      ansible.builtin.shell: |
-        if npm ls -g --json | jq -e --arg e '{{ item }}' '.dependencies[$e]' >/dev/null; then
-          return
-        fi
-        npm install -g '{{ item }}'
-        echo DONE
-      register: result
-      changed_when: result.stdout | length > 0
-      loop:
-        - eslint
-        - marked
-        - prettier
+    # - name: 'npm install'
+    #   ansible.builtin.shell: |
+    #     if npm ls -g --json | jq -e --arg e '{{ item }}' '.dependencies[$e]' >/dev/null; then
+    #       return
+    #     fi
+    #     npm install -g '{{ item }}'
+    #     echo DONE
+    #   register: result
+    #   changed_when: result.stdout | length > 0
+    #   loop:
+    #     - eslint
+    #     - marked
+    #     - prettier
 
-    - name: 'brew install'
-      ansible.builtin.command:
-        argv: ['{{ GHQ_ROOT.stdout }}/github.com/Homebrew/brew/bin/brew', install, '{{ item }}']
-      register: result
-      changed_when: result.stderr is not search(" is already installed and up-to-date.")
-      loop:
-        - asdf
-        # - deno
-        - yq
+    # - name: 'brew install'
+    #   ansible.builtin.command:
+    #     argv: ['{{ GHQ_ROOT.stdout }}/github.com/Homebrew/brew/bin/brew', install, '{{ item }}']
+    #   register: result
+    #   changed_when: result.stderr is not search(" is already installed and up-to-date.")
+    #   loop:
+    #     - asdf
+    #     # - deno
+    #     - yq
 
 - hosts: localhost
   roles:
@@ -91,10 +100,5 @@
       tags: dotfiles
     - role: emacs
       tags: emacs
-    - role: git-credential-keepassxc
-      tags: git-credential-keepassxc
-      vars:
-        version: v0.14.1
-      when: windows_home is defined
     - role: zsh
       tags: zsh

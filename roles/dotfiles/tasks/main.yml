@@ -9,14 +9,8 @@
     - git@github.com:gidoichi/dotfiles.git
   register: result
 
-- name: 'Link ~/.dotfiles'
-  ansible.builtin.file:
-    state: link
-    src: '{{ GHQ_ROOT.stdout }}/github.com/gidoichi/dotfiles'
-    path: '{{ ansible_env.HOME }}/.dotfiles'
-
 - name: 'Run install.sh'
   ansible.builtin.command:
-    argv: ['{{ ansible_env.HOME }}/.dotfiles/install.sh']
+    argv: ['{{ GHQ_ROOT.stdout }}/github.com/gidoichi/dotfiles/install.sh']
   register: result
   changed_when: result.stderr | length > 0

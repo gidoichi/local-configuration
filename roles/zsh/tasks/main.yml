@@ -1,9 +1,9 @@
 ---
 - name: 'Install packages'
-  become: true
   ansible.builtin.package:
     name: '{{ item }}'
     state: latest
+  become: true
   loop:
     - fzf
     - zsh
@@ -12,6 +12,7 @@
   ansible.builtin.user:
     name: '{{ ansible_env.USER }}'
     shell: /bin/zsh
+  become: true
 
 - name: 'Install prezto modules'
   ansible.builtin.git:
