@@ -1,0 +1,104 @@
+- hosts: localhost
+  tasks:
+    - name: 'Register windows_home variable'
+      ansible.builtin.shell: |
+        set -eu
+        profile=$(powershell.exe -Command Write-Host '$Env:USERPROFILE')
+        wslpath "$profile"
+      check_mode: false
+      changed_when: false
+      register: windows_home
+      tags: always
+      when: ansible_env.WSL_DISTRO_NAME is defined
+    - name: 'Print windows_home variable'
+      ansible.builtin.debug:
+        msg: '{{ windows_home.stdout }}'
+      tags: always
+
+- hosts: localhost
+  roles:
+    - role: ghq
+      tags: ghq
+    - role: git-credential-keepassxc
+      tags: git-credential-keepassxc
+      vars:
+        version: v0.14.1
+      when: windows_home is defined
+    - role: npm
+      tags: npm
+    - role: ssh
+      tags: ssh
+
+- hosts: localhost
+  tasks:
+    - name: 'Install latest packages'
+      become: true
+      ansible.builtin.package:
+        name: '{{ item }}'
+        state: latest
+      loop:
+        - apt-file
+        - fzf
+        - git
+        - jq
+        - make
+        - trash-cli
+
+    - name: 'Put Links to Windows Directories in "HOME"'
+      ansible.builtin.file:
+        src: '{{ windows_home.stdout }}/{{ item }}'
+        dest: '{{ ansible_env.HOME }}/{{ item }}'
+        state: link
+      loop:
+        - 'Desktop'
+        - 'Documents'
+        - 'Downloads'
+        - 'Music'
+        - 'Pictures'
+        - 'Videos'
+      when: windows_home is defined
+
+    - name: 'ghq get'
+      ansible.builtin.command:
+        argv: [ghq, get, '{{ item }}']
+      changed_when: result.stderr is not search("exists")
+      environment:
+        PATH: "{{ (ansible_env.GOPATH | default(ansible_env.HOME + '/go')) + '/bin' }}:{{ ansible_env.PATH }}"
+      loop:
+        - https://github.com/Homebrew/brew.git
+        - git@github.com:gidoichi/conffiles.git
+        - git@github.com:gidoichi/pmo.git
+      register: result
+
+    # - name: 'npm install'
+    #   ansible.builtin.shell: |
+    #     if npm ls -g --json | jq -e --arg e '{{ item }}' '.dependencies[$e]' >/dev/null; then
+    #       return
+    #     fi
+    #     npm install -g '{{ item }}'
+    #     echo DONE
+    #   register: result
+    #   changed_when: result.stdout | length > 0
+    #   loop:
+    #     - eslint
+    #     - marked
+    #     - prettier
+
+    # - name: 'brew install'
+    #   ansible.builtin.command:
+    #     argv: ['{{ GHQ_ROOT.stdout }}/github.com/Homebrew/brew/bin/brew', install, '{{ item }}']
+    #   register: result
+    #   changed_when: result.stderr is not search(" is already installed and up-to-date.")
+    #   loop:
+    #     - asdf
+    #     # - deno
+    #     - yq
+
+- hosts: localhost
+  roles:
+    - role: dotfiles
+      tags: dotfiles
+    - role: emacs
+      tags: emacs
+    - role: zsh
+      tags: zsh

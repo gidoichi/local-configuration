@@ -1,0 +1,15 @@
+---
+- name: 'Add apt repositories'
+  become: true
+  apt_repository:
+    repo: '{{ item }}'
+  loop:
+    - ppa:longsleep/golang-backports
+
+- name: 'Install packages'
+  become: true
+  ansible.builtin.package:
+    name: '{{ item }}'
+    state: latest
+  loop:
+    - golang

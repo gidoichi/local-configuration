@@ -1,0 +1,25 @@
+---
+- name: 'go install'
+  ansible.builtin.shell: |
+    command=$(echo "{{ item }}" | sed 's#.*/\(.*\)@.*#\1#')
+    if which $command >/dev/null; then
+      exit
+    fi
+
+    go install {{ item }}
+    echo DONE
+  changed_when: result.stdout | length > 0
+  environment:
+    PATH: "{{ (ansible_env.GOPATH | default(ansible_env.HOME + '/go')) + '/bin' }}:{{ ansible_env.PATH }}"
+  loop:
+    - github.com/x-motemen/ghq@latest
+  register: result
+
+- name: 'Register GHQ_ROOT variable'
+  ansible.builtin.command:
+    argv: [ghq, root]
+  register: GHQ_ROOT
+  check_mode: false
+  changed_when: false
+  environment:
+    PATH: "{{ (ansible_env.GOPATH | default(ansible_env.HOME + '/go')) + '/bin' }}:{{ ansible_env.PATH }}"

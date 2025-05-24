@@ -1,0 +1,16 @@
+---
+- name: 'ghq get'
+  ansible.builtin.command:
+    argv: [ghq, get, '{{ item }}']
+  changed_when: result.stderr is not search("exists")
+  environment:
+    PATH: "{{ (ansible_env.GOPATH | default(ansible_env.HOME + '/go')) + '/bin' }}:{{ ansible_env.PATH }}"
+  loop:
+    - git@github.com:gidoichi/dotfiles.git
+  register: result
+
+- name: 'Run install.sh'
+  ansible.builtin.command:
+    argv: ['{{ GHQ_ROOT.stdout }}/github.com/gidoichi/dotfiles/install.sh']
+  register: result
+  changed_when: result.stderr | length > 0

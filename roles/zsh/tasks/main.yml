@@ -1,0 +1,36 @@
+---
+- name: 'Install packages'
+  ansible.builtin.package:
+    name: '{{ item }}'
+    state: latest
+  become: true
+  loop:
+    - fzf
+    - zsh
+
+- name: 'Change default shell'
+  ansible.builtin.user:
+    name: '{{ ansible_env.USER }}'
+    shell: /bin/zsh
+  become: true
+
+- name: 'Install prezto modules'
+  ansible.builtin.git:
+    repo: '{{ item }}'
+    dest: '{{ ansible_env.HOME }}/.zprezto/contrib/{{ item | regex_replace("^.*/") }}'
+  loop:
+    - https://github.com/Aloxaf/fzf-tab
+
+- name: 'Initialize prezto'
+  ansible.builtin.command:
+    argv:
+      - /bin/zsh
+      - -c
+      - |
+        setopt EXTENDED_GLOB
+        for rcfile in "${HOME}"/.zprezto/runcoms/^README.md(.N); do
+          [ -e "${HOME}/.${rcfile:t}" ] && continue
+          (set -x; ln -s "$rcfile" "${HOME}/.${rcfile:t}")
+        done
+  register: result
+  changed_when: result.stderr | length > 0

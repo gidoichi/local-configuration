@@ -1,0 +1,9 @@
+---
+dependencies:
+  - role: dotfiles
+  # https://github.com/gidoichi/dotfiles/blob/733225ff751cf4ae6fdbca8e6af9c7d661022e62/.doom.d/inits/20_major-modes.el#L27
+  - role: golang
+  # https://github.com/gidoichi/local-configuration/blob/3130a0216e011f9994d12694216705f6140c3642/roles/emacs/tasks/main.yml#L15
+  - role: npm
+  # https://github.com/gidoichi/dotfiles/blob/733225ff751cf4ae6fdbca8e6af9c7d661022e62/.doom.d/inits/20_major-modes.el#L221
+  - role: zsh
