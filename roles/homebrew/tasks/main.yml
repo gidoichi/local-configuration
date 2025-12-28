@@ -1,0 +1,17 @@
+---
+- name: 'Install Homebrew'
+  become: true
+  ansible.builtin.shell: |
+    if /home/linuxbrew/.linuxbrew/bin/brew --help >/dev/null; then
+      exit
+    fi
+    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+  changed_when: result.stdout | length > 0
+  register: result
+
+- name: 'Register BREW variable'
+  ansible.builtin.command:
+    argv: [ls, /home/linuxbrew/.linuxbrew/bin/brew]
+  register: BREW
+  check_mode: false
+  changed_when: false

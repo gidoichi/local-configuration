@@ -17,6 +17,8 @@
 
 - hosts: localhost
   roles:
+    - role: homebrew
+      tags: homebrew
     - role: ghq
       tags: ghq
     - role: git-credential-keepassxc
@@ -24,8 +26,6 @@
       vars:
         version: v0.14.1
       when: windows_home is defined
-    - role: npm
-      tags: npm
     - role: ssh
       tags: ssh
 
@@ -41,7 +41,6 @@
         - git
         - jq
         - make
-        - trash-cli
         # https://github.com/gidoichi/dotfiles/blob/733225ff751cf4ae6fdbca8e6af9c7d661022e62/.shell/init.d/20-config.sh#L126
         - fzf
 
@@ -66,48 +65,30 @@
       environment:
         PATH: "{{ (ansible_env.GOPATH | default(ansible_env.HOME + '/go')) + '/bin' }}:{{ ansible_env.PATH }}"
       loop:
-        - https://github.com/Homebrew/brew.git
         - git@github.com:gidoichi/conffiles.git
-        - git@github.com:gidoichi/pmo.git
       register: result
-
-    - block:
-      - name: 'Install packages'
-        become: true
-        ansible.builtin.package:
-          name: '{{ item }}'
-          state: latest
-        loop:
-          - yq
-      - name: 'Install conffiles'
-        ansible.builtin.command:
-          argv: ['{{ GHQ_ROOT.stdout }}/github.com/gidoichi/conffiles/install.sh']
-        register: result
-        changed_when: result.stderr | length > 0
-
-    # - name: 'npm install'
-    #   ansible.builtin.shell: |
-    #     if npm ls -g --json | jq -e --arg e '{{ item }}' '.dependencies[$e]' >/dev/null; then
-    #       return
-    #     fi
-    #     npm install -g '{{ item }}'
-    #     echo DONE
-    #   register: result
-    #   changed_when: result.stdout | length > 0
-    #   loop:
-    #     - eslint
-    #     - marked
-    #     - prettier
 
     - name: 'brew install'
       ansible.builtin.command:
-        argv: ['{{ GHQ_ROOT.stdout }}/github.com/Homebrew/brew/bin/brew', install, '{{ item }}']
-      register: result
+        argv: ['{{ BREW.stdout }}', install, '{{ item }}']
       changed_when: result.stderr is not search(" is already installed and up-to-date.")
       loop:
-        # - deno
-        # https://github.com/gidoichi/dotfiles/blob/733225ff751cf4ae6fdbca8e6af9c7d661022e62/.shell/init.d/20-config.sh#L15
-        - asdf
+        - pmo
+      register: result
+
+    - block:
+      - name: 'brew install'
+        ansible.builtin.command:
+          argv: ['{{ BREW.stdout }}', install, '{{ item }}']
+        changed_when: result.stderr is not search(" is already installed and up-to-date.")
+        loop:
+          - yq
+        register: result
+      - name: 'Install conffiles'
+        ansible.builtin.command:
+          argv: ['{{ GHQ_ROOT.stdout }}/github.com/gidoichi/conffiles/install.sh', -f]
+        changed_when: result.stderr | length > 0
+        register: result
 
 - hosts: localhost
   roles:
@@ -117,3 +98,5 @@
       tags: emacs
     - role: zsh
       tags: zsh
+    - role: kubectl
+      tags: kubectl

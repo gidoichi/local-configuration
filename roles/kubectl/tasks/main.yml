@@ -1,0 +1,26 @@
+---
+- name: 'asdf install'
+  ansible.builtin.command:
+    argv: ['{{ ASDF.stdout }}', install, '{{ item }}', latest]
+  register: result
+  changed_when: result.stderr is not search(" is already installed")
+  loop:
+    - kubectl
+
+- name: 'brew install'
+  ansible.builtin.command:
+    argv: ['{{ BREW.stdout }}', install, '{{ item }}']
+  register: result
+  changed_when: result.stderr is not search(" is already installed and up-to-date.")
+  loop:
+    - gidoichi/tap/asdf-match
+    - kube-ps1
+
+- name: 'Install packages'
+  become: true
+  ansible.builtin.package:
+    name: '{{ item }}'
+    state: latest
+  loop:
+    - colordiff
+    - kubectx

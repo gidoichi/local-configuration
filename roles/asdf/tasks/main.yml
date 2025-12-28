@@ -1,0 +1,15 @@
+---
+- name: 'brew install'
+  ansible.builtin.command:
+    argv: ['{{ BREW.stdout }}', install, '{{ item }}']
+  register: result
+  changed_when: result.stderr is not search(" is already installed and up-to-date.")
+  loop:
+    - asdf
+
+- name: 'Register ASDF variable'
+  ansible.builtin.command:
+    argv: [ls, /home/linuxbrew/.linuxbrew/bin/asdf]
+  register: ASDF
+  check_mode: false
+  changed_when: false
