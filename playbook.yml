@@ -40,7 +40,6 @@
       loop:
         - apt-file
         - git
-        - jq
         - make
 
     - name: 'Put Links to Windows Directories in "HOME"'
@@ -77,6 +76,13 @@
       register: result
 
     - block:
+      - name: 'Install packages'
+        become: true
+        ansible.builtin.package:
+          name: '{{ item }}'
+          state: latest
+        loop:
+          - jq
       - name: 'brew install'
         ansible.builtin.command:
           argv: ['{{ BREW.stdout }}', install, '{{ item }}']
