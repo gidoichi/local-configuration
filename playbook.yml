@@ -1,19 +1,20 @@
 - hosts: localhost
   tasks:
-    - name: 'Register windows_home variable'
-      ansible.builtin.shell: |
-        set -eu
-        profile=$(powershell.exe -Command Write-Host '$Env:USERPROFILE')
-        wslpath "$profile"
-      check_mode: false
-      changed_when: false
-      register: windows_home
-      tags: always
-      when: ansible_env.WSL_DISTRO_NAME is defined
-    - name: 'Print windows_home variable'
-      ansible.builtin.debug:
-        msg: '{{ windows_home.stdout }}'
-      tags: always
+    - when: ansible_env.WSL_DISTRO_NAME is defined
+      block:
+      - name: 'Register windows_home variable'
+        ansible.builtin.shell: |
+          set -eu
+          profile=$(powershell.exe -Command Write-Host '$Env:USERPROFILE')
+          wslpath "$profile"
+        check_mode: false
+        changed_when: false
+        register: windows_home
+        tags: always
+      - name: 'Print windows_home variable'
+        ansible.builtin.debug:
+          msg: '{{ windows_home.stdout }}'
+        tags: always
 
 - hosts: localhost
   roles:
