@@ -1,7 +1,8 @@
 ---
 - name: 'asdf install'
-  ansible.builtin.command:
-    argv: ['{{ ASDF.stdout }}', install, '{{ item }}', latest]
+  ansible.builtin.shell: |
+    '{{ ASDF.stdout }}' plugin add '{{ item }}'
+    '{{ ASDF.stdout }}' install '{{ item }}' latest
   register: result
   changed_when: result.stderr is not search(" is already installed")
   loop:
