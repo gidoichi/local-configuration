@@ -16,3 +16,10 @@
   register: BREW
   check_mode: false
   changed_when: false
+
+- name: 'Register BREW_PATH variable'
+  ansible.builtin.command:
+    argv: [ls, -d, /home/linuxbrew/.linuxbrew/bin]
+  register: BREW_PATH
+  check_mode: false
+  changed_when: false

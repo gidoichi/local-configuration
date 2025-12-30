@@ -12,6 +12,8 @@
     argv: ['{{ BREW.stdout }}', install, '{{ item }}']
   register: result
   changed_when: result.stderr is not search(" is already installed and up-to-date.")
+  environment:
+    PATH: '{{ BREW_PATH.stdout }}:{{ ansible_env.PATH }}'
   loop:
     - gidoichi/tap/asdf-match
     - kube-ps1
