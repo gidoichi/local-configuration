@@ -67,6 +67,7 @@
         PATH: "{{ (ansible_env.GOPATH | default(ansible_env.HOME + '/go')) + '/bin' }}:{{ ansible_env.PATH }}"
       loop:
         - git@github.com:gidoichi/conffiles.git
+        - git@github.com:gidoichi/local-configuration.git
       register: result
 
     - name: 'brew install'
