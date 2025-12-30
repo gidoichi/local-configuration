@@ -4,7 +4,7 @@
     argv: [ghq, get, '{{ item }}']
   changed_when: result.stderr is not search("exists")
   environment:
-    PATH: "{{ (ansible_env.GOPATH | default(ansible_env.HOME + '/go')) + '/bin' }}:{{ ansible_env.PATH }}"
+    PATH: '{{ GOLANG_PATH.stdout }}:{{ ansible_env.PATH }}'
   loop:
     - git@github.com:gidoichi/dotfiles.git
   register: result
