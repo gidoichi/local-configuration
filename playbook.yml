@@ -73,7 +73,7 @@
         argv: ['{{ BREW.stdout }}', install, '{{ item }}']
       changed_when: result.stderr is not search(" is already installed and up-to-date.")
       loop:
-        - pmo
+        - gidoichi/tap/pmo
       register: result
 
     - block:
