@@ -82,7 +82,7 @@
         register: result
       - name: 'Install conffiles'
         ansible.builtin.command:
-          argv: ['{{ GHQ_ROOT.stdout }}/github.com/gidoichi/conffiles/install.sh', -f]
+          argv: ['{{ GHQ_ROOT.stdout }}/github.com/gidoichi/conffiles/install.sh']
         changed_when: result.stderr | length > 0
         environment:
           PATH: '{{ BREW_PATH.stdout }}:{{ ansible_env.PATH }}'
