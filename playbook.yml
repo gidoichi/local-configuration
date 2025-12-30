@@ -25,7 +25,7 @@
       tags: git-credential-keepassxc
       vars:
         version: v0.14.1
-      when: windows_home is defined
+      when: not windows_home.skipped
     - role: ssh
       tags: ssh
 
@@ -56,7 +56,7 @@
         - 'Music'
         - 'Pictures'
         - 'Videos'
-      when: windows_home is defined
+      when: not windows_home.skipped
 
     - name: 'ghq get'
       ansible.builtin.command:
