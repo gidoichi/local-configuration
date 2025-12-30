@@ -1,0 +1,11 @@
+---
+- name: 'Install latest packages'
+  become: true
+  ansible.builtin.package:
+    name: '{{ item }}'
+    state: latest
+  loop:
+    - apt-file
+    - curl
+    - git
+    - make

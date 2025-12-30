@@ -1,17 +1,25 @@
 ---
 - name: 'Install Homebrew'
-  become: true
   ansible.builtin.shell: |
-    if /home/linuxbrew/.linuxbrew/bin/brew --help >/dev/null; then
+    if [ -f /home/linuxbrew/.linuxbrew/bin/brew ]; then
       exit
     fi
     /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
   changed_when: result.stdout | length > 0
+  environment:
+    NONINTERACTIVE: "true"
   register: result
 
 - name: 'Register BREW variable'
   ansible.builtin.command:
     argv: [ls, /home/linuxbrew/.linuxbrew/bin/brew]
   register: BREW
+  check_mode: false
+  changed_when: false
+
+- name: 'Register BREW_PATH variable'
+  ansible.builtin.command:
+    argv: [ls, -d, /home/linuxbrew/.linuxbrew/bin]
+  register: BREW_PATH
   check_mode: false
   changed_when: false

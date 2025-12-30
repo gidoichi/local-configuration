@@ -13,3 +13,10 @@
     state: latest
   loop:
     - golang
+
+- name: 'Register GOLANG_PATH variable'
+  ansible.builtin.command:
+    argv: [echo, "{{ (ansible_env.GOPATH | default(ansible_env.HOME + '/go')) + '/bin' }}"]
+  register: GOLANG_PATH
+  check_mode: false
+  changed_when: false

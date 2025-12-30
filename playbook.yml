@@ -1,19 +1,20 @@
 - hosts: localhost
   tasks:
-    - name: 'Register windows_home variable'
-      ansible.builtin.shell: |
-        set -eu
-        profile=$(powershell.exe -Command Write-Host '$Env:USERPROFILE')
-        wslpath "$profile"
-      check_mode: false
-      changed_when: false
-      register: windows_home
-      tags: always
-      when: ansible_env.WSL_DISTRO_NAME is defined
-    - name: 'Print windows_home variable'
-      ansible.builtin.debug:
-        msg: '{{ windows_home.stdout }}'
-      tags: always
+    - when: ansible_env.WSL_DISTRO_NAME is defined
+      block:
+      - name: 'Register windows_home variable'
+        ansible.builtin.shell: |
+          set -eu
+          profile=$(powershell.exe -Command Write-Host '$Env:USERPROFILE')
+          wslpath "$profile"
+        check_mode: false
+        changed_when: false
+        register: windows_home
+        tags: always
+      - name: 'Print windows_home variable'
+        ansible.builtin.debug:
+          msg: '{{ windows_home.stdout }}'
+        tags: always
 
 - hosts: localhost
   roles:
@@ -25,25 +26,12 @@
       tags: git-credential-keepassxc
       vars:
         version: v0.14.1
-      when: windows_home is defined
+      when: not windows_home.skipped
     - role: ssh
       tags: ssh
 
 - hosts: localhost
   tasks:
-    - name: 'Install latest packages'
-      become: true
-      ansible.builtin.package:
-        name: '{{ item }}'
-        state: latest
-      loop:
-        - apt-file
-        - git
-        - jq
-        - make
-        # https://github.com/gidoichi/dotfiles/blob/733225ff751cf4ae6fdbca8e6af9c7d661022e62/.shell/init.d/20-config.sh#L126
-        - fzf
-
     - name: 'Put Links to Windows Directories in "HOME"'
       ansible.builtin.file:
         src: '{{ windows_home.stdout }}/{{ item }}'
@@ -56,16 +44,17 @@
         - 'Music'
         - 'Pictures'
         - 'Videos'
-      when: windows_home is defined
+      when: not windows_home.skipped
 
     - name: 'ghq get'
       ansible.builtin.command:
         argv: [ghq, get, '{{ item }}']
       changed_when: result.stderr is not search("exists")
       environment:
-        PATH: "{{ (ansible_env.GOPATH | default(ansible_env.HOME + '/go')) + '/bin' }}:{{ ansible_env.PATH }}"
+        PATH: '{{ GOLANG_PATH.stdout }}:{{ ansible_env.PATH }}'
       loop:
         - git@github.com:gidoichi/conffiles.git
+        - git@github.com:gidoichi/local-configuration.git
       register: result
 
     - name: 'brew install'
@@ -73,10 +62,17 @@
         argv: ['{{ BREW.stdout }}', install, '{{ item }}']
       changed_when: result.stderr is not search(" is already installed and up-to-date.")
       loop:
-        - pmo
+        - gidoichi/tap/pmo
       register: result
 
     - block:
+      - name: 'Install packages'
+        become: true
+        ansible.builtin.package:
+          name: '{{ item }}'
+          state: latest
+        loop:
+          - jq
       - name: 'brew install'
         ansible.builtin.command:
           argv: ['{{ BREW.stdout }}', install, '{{ item }}']
@@ -86,8 +82,10 @@
         register: result
       - name: 'Install conffiles'
         ansible.builtin.command:
-          argv: ['{{ GHQ_ROOT.stdout }}/github.com/gidoichi/conffiles/install.sh', -f]
+          argv: ['{{ GHQ_ROOT.stdout }}/github.com/gidoichi/conffiles/install.sh']
         changed_when: result.stderr | length > 0
+        environment:
+          PATH: '{{ BREW_PATH.stdout }}:{{ ansible_env.PATH }}'
         register: result
 
 - hosts: localhost

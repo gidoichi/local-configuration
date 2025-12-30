@@ -10,7 +10,7 @@
     echo DONE
   changed_when: result.stdout | length > 0
   environment:
-    PATH: "{{ (ansible_env.GOPATH | default(ansible_env.HOME + '/go')) + '/bin' }}:{{ ansible_env.PATH }}"
+    PATH: '{{ GOLANG_PATH.stdout }}:{{ ansible_env.PATH }}'
   loop:
     - github.com/x-motemen/ghq@latest
   register: result
@@ -22,4 +22,4 @@
   check_mode: false
   changed_when: false
   environment:
-    PATH: "{{ (ansible_env.GOPATH | default(ansible_env.HOME + '/go')) + '/bin' }}:{{ ansible_env.PATH }}"
+    PATH: '{{ GOLANG_PATH.stdout }}:{{ ansible_env.PATH }}'

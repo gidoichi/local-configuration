@@ -4,7 +4,7 @@
   ansible.builtin.apt:
     # without postfix
     install_recommends: false
-    name: emacs-nox
+    name: emacs
     state: latest
 
 - name: 'Install packages'
