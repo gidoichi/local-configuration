@@ -18,6 +18,8 @@
   loop:
     - gidoichi/tap/asdf-match
     - kube-ps1
+    - kubecolor
+    - kubectx
 
 - name: 'Install packages'
   become: true
@@ -26,4 +28,3 @@
     state: latest
   loop:
     - colordiff
-    - kubectx
