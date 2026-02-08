@@ -53,7 +53,6 @@
       environment:
         PATH: '{{ GOLANG_PATH.stdout }}:{{ ansible_env.PATH }}'
       loop:
-        - git@github.com:gidoichi/conffiles.git
         - git@github.com:gidoichi/local-configuration.git
       register: result
 
@@ -79,13 +78,6 @@
         changed_when: result.stderr is not search(" is already installed and up-to-date.")
         loop:
           - yq
-        register: result
-      - name: 'Install conffiles'
-        ansible.builtin.command:
-          argv: ['{{ GHQ_ROOT.stdout }}/github.com/gidoichi/conffiles/install.sh']
-        changed_when: result.stderr | length > 0
-        environment:
-          PATH: '{{ BREW_PATH.stdout }}:{{ ansible_env.PATH }}'
         register: result
 
 - hosts: localhost
